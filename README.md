@@ -190,12 +190,6 @@ You: Show me all Python files in the project
 | Connection Error | Check internet connection and API endpoint |
 | EOFError | Use Ctrl+D to exit gracefully |
 
-## Performance 🚄
-
-- **Fast**: Uses Claude Haiku for quick responses
-- **Efficient**: Maintains conversation history for context
-- **Scalable**: Can handle large files and projects
-
 ## Security 🔒
 
 - API keys should never be committed to version control
@@ -226,18 +220,3 @@ This is a personal project. Feel free to fork and extend it with:
 - [ ] Multi-user support
 - [ ] Persistent conversation history
 - [ ] Code analysis and suggestions
-
-## License 📄
-
-This project is open source and available under the MIT License.
-
-## Support 📞
-
-For issues or questions:
-1. Check the troubleshooting section
-2. Review Anthropic's documentation: https://docs.anthropic.com
-3. Open an issue on GitHub
-
----
-
-**Happy coding with Claude!** 🎉
