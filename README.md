@@ -6,6 +6,7 @@ An interactive AI-powered coding assistant built with Claude that can read, list
 
 - **Interactive Chat Interface**: Communicate naturally with Claude about your code
 - **File Operations**: Read, list, and edit files programmatically through natural language
+- **Documentation Search (RAG)**: Ask questions about your project docs; the agent retrieves relevant chunks from a local Weaviate vector database
 - **Tool Integration**: Seamless integration of file management tools with Claude's API
 - **Error Handling**: Robust error handling for file operations
 - **Customizable**: Easy to extend with additional tools
@@ -14,6 +15,7 @@ An interactive AI-powered coding assistant built with Claude that can read, list
 
 - Python 3.12 or higher
 - Anthropic API key (get one at [console.anthropic.com](https://console.anthropic.com))
+- Docker and Docker Compose (for the Weaviate vector database used by RAG)
 
 ## Installation 🚀
 
@@ -38,6 +40,16 @@ pip install -r requirements.txt
 ANTHROPIC_API_KEY=your-api-key-here
 # Optional: specify a custom base URL
 ANTHROPIC_BASE_URL=https://api.anthropic.com
+```
+
+4. Start Weaviate and the embedding service:
+```bash
+docker compose up -d
+```
+
+5. Index the documentation in `docs/` (re-run whenever the docs change):
+```bash
+python index_docs.py
 ```
 
 ## Usage 🎯
@@ -73,6 +85,12 @@ You: Change the function name from 'old_name' to 'new_name' in utils.py
 Claude: [performs the edit]
 ```
 
+**Searching documentation (RAG):**
+```
+You: How do I set up the project according to the docs?
+Claude: [calls search_documentation and answers from the matching doc chunks]
+```
+
 **Complex tasks:**
 ```
 You: Create a new Python file called helpers.py with a function that reverses strings
@@ -84,7 +102,11 @@ Claude: [creates the file with the requested function]
 ```
 coding-agent/
 ├── main.py              # Main entry point and CodingAgent class
-├── tools.py             # Tool definitions for file operations
+├── tools.py             # Tool definitions (file operations + documentation search)
+├── rag.py               # WeaviateRag: chunking, indexing and semantic search
+├── index_docs.py        # Script that indexes docs/*.md into Weaviate
+├── docker-compose.yml   # Weaviate + text2vec-transformers services
+├── docs/                # Markdown documentation that gets indexed
 ├── pyproject.toml       # Project metadata and dependencies
 ├── .env                 # API credentials (not in version control)
 └── README.md            # This file
@@ -110,6 +132,21 @@ Create or modify files by replacing text.
   - `new_str`: Replacement text
 - **Output**: Status message
 
+### 4. **search_documentation**
+Semantic search over the indexed project documentation.
+- **Inputs**:
+  - `query`: Description of the information you are looking for
+  - `top_k`: Number of chunks to return (optional, default 3)
+- **Output**: Matching chunks, each labeled with its source file and chunk number
+
+## How RAG Works 📚
+
+1. `docker compose up -d` runs Weaviate (ports 8080 and 50051) and a `text2vec-transformers` container (`multi-qa-MiniLM-L6-cos-v1`) that generates embeddings locally, so no extra API key is needed.
+2. `index_docs.py` reads every `.md` file in `docs/`, splits it into ~500-word chunks with a 50-word overlap, and stores them in a `Documentation` collection.
+3. When a question needs project knowledge, Claude calls `search_documentation`, which runs a `near_text` query and returns the closest chunks.
+
+To index a different folder or collection, change `docs_dir` / `collection_name` in `WeaviateRag` (`rag.py`). Pass `clear_existing=True` to `index_documents()` to rebuild the collection from scratch.
+
 ## Architecture 🏗️
 
 The project follows a modular design:
@@ -129,6 +166,7 @@ CodingAgent
 - **pydantic**: Data validation and parsing
 - **python-dotenv**: Environment variable management
 - **termcolor**: Colored terminal output
+- **weaviate-client**: Client for the Weaviate vector database (RAG)
 
 See `pyproject.toml` for specific version requirements.
 
@@ -189,6 +227,8 @@ You: Show me all Python files in the project
 | File Not Found | Verify the relative path from the project root |
 | Connection Error | Check internet connection and API endpoint |
 | EOFError | Use Ctrl+D to exit gracefully |
+| `search_documentation` fails | Make sure `docker compose up -d` is running and Weaviate is reachable on `localhost:8080` / `50051` |
+| No documentation found | Run `python index_docs.py` to index `docs/` |
 
 ## Security 🔒
 
@@ -208,6 +248,7 @@ This is a personal project. Feel free to fork and extend it with:
 
 - File operations are relative to the current working directory
 - Cannot delete files (only read and edit)
+- Only Markdown (`.md`) files in `docs/` are indexed, and the index is not updated automatically
 - No version control integration
 - Single-threaded conversation handling
 

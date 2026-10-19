@@ -9,4 +9,5 @@ dependencies = [
     "pydantic>=2.13.4",
     "python-dotenv>=1.2.2",
     "termcolor>=3.3.0",
+    "weaviate-client>=4.23.1",
 ]

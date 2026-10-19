@@ -6,7 +6,12 @@ from anthropic.types import ToolParam
 from dotenv import load_dotenv
 from termcolor import colored
 
-from tools import edit_file_definition, list_files_definition, read_file_definition
+from tools import (
+    edit_file_definition,
+    list_files_definition,
+    read_file_definition,
+    search_documentation_definition,
+)
 
 load_dotenv()
 
@@ -22,7 +27,12 @@ class CodingAgent:
             credentials["base_url"] = base_url
 
         self.client = anthropic.Anthropic(**credentials)
-        self.tools = [read_file_definition, list_files_definition, edit_file_definition]
+        self.tools = [
+            read_file_definition,
+            list_files_definition,
+            edit_file_definition,
+            search_documentation_definition,
+        ]
 
     def get_message(self):
         try:
@@ -56,7 +66,7 @@ class CodingAgent:
             tool_results = []
             for content in message.content:
                 if content.type == "text":
-                    print(colored("Claude: ", "yellow"), content.text)
+                    print(colored(f"Agent: {content.text}", "yellow", attrs=['dark']))
                 elif content.type == "tool_use":
                     result = self.execute_tool(
                         content.id,
@@ -75,7 +85,7 @@ class CodingAgent:
     def execute_tool(self, tool_id, name, input_data):
         for tool in self.tools:
             if tool.name == name:
-                print(colored("tool:", "green"), f" {name}({input_data})")
+                print(colored(f"tool: {name}({input_data})", "green", attrs=['dark']))
                 result, error = tool.function(input_data)
 
                 if error:

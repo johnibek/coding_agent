@@ -4,6 +4,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from rag import WeaviateRag
+
 
 class ToolDefinition:
     def __init__(self, name, description, input_schema, function):
@@ -31,18 +33,18 @@ def list_files(input_data):
 
     try:
         results = []
-        
+
         for root, _, files in os.walk(base_path):
-            if base_path == '.':
-                relative_dir = '.'
+            if base_path == ".":
+                relative_dir = "."
             else:
                 relative_dir = os.path.relpath(root, base_path)
 
-            if relative_dir != '.':
+            if relative_dir != ".":
                 results.append(f"{relative_dir}/")
 
             for file in files:
-                if relative_dir == '.':
+                if relative_dir == ".":
                     results.append(file)
                 else:
                     results.append(os.path.join(relative_dir, file))
@@ -54,9 +56,9 @@ def list_files(input_data):
 
 def edit_file(input_data):
     input_dict = json.loads(input_data)
-    path = input_dict['path']
-    old_str = input_dict['old_str']
-    new_str = input_dict.get('new_str')
+    path = input_dict["path"]
+    old_str = input_dict["old_str"]
+    new_str = input_dict.get("new_str")
 
     if not path or old_str == new_str:
         return "", "invalid input params"
@@ -64,7 +66,7 @@ def edit_file(input_data):
     file_path = Path(path)
 
     try:
-        if not os.path.exists(file_path) and old_str == '':
+        if not os.path.exists(file_path) and old_str == "":
             if file_path.parent != Path("."):
                 file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(new_str)
@@ -80,7 +82,33 @@ def edit_file(input_data):
         return "Successfully edited.", None
     except Exception as e:
         return "", str(e)
-    
+
+
+def search_documentation(input_data):
+    input_dict = json.loads(input_data)
+    query = input_dict["query"]
+    top_k = input_dict.get("top_k", 3)
+
+    try:
+        with WeaviateRag() as rag:
+            results = rag.search(query=query, top_k=top_k)
+
+            if not results:
+                return "No relavant documentation found.", None
+
+            formatted_result = []
+
+            for i, result in enumerate(results, 1):
+                formatted_result.append(
+                    f"Result {i} - {result['filename']}, chunk - {result['chunk_id']}\n"
+                    f"{result['content']}"
+                )
+
+        return "\n----\n".join(formatted_result), None
+
+    except Exception as e:
+        return "", f"Searching failed {e}"
+
 
 class ReadFileInput(BaseModel):
     path: str = Field(
@@ -94,6 +122,7 @@ class ListFileInput(BaseModel):
         default=None,
     )
 
+
 class EditFileInput(BaseModel):
     path: str = Field(
         description="The path to the file. If it doesn't exist, the tool creates it automatically."
@@ -101,9 +130,17 @@ class EditFileInput(BaseModel):
     old_str: str = Field(
         description="Text to search for - must match exactly and must only have one match exactly."
     )
-    new_str: str = Field(
-        description="Text to replace old string with."
+    new_str: str = Field(description="Text to replace old string with.")
+
+
+class SearchDocumentationInput(BaseModel):
+    query: str = Field(
+        description="The search query describing the information you are looking for."
     )
+    top_k: int | None = Field(
+        description="Number of relavant documentation chunks to return.", default=3
+    )
+
 
 read_file_definition = ToolDefinition(
     name="read_file",
@@ -127,4 +164,13 @@ edit_file_definition = ToolDefinition(
     """,
     input_schema=EditFileInput.model_json_schema(),
     function=edit_file,
+)
+
+search_documentation_definition = ToolDefinition(
+    name="search_documentation",
+    description="""
+    Search through project documentation to find relevant information. Use this tool when you need to answer the questions about project, setup, configuration, etc.
+    """,
+    input_schema=SearchDocumentationInput.model_json_schema(),
+    function=search_documentation,
 )
