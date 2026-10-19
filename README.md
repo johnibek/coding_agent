@@ -1,6 +1,6 @@
 # Coding Agent 🤖
 
-An interactive AI-powered coding assistant built with Claude that can read, list, and edit files in your project. Chat naturally with Claude to manage your codebase!
+An interactive AI-powered coding assistant built using Claude SDK that can read, list, and edit files in your project. Chat naturally with agent to manage your codebase!
 
 ## Features ✨
 
